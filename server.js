@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -293,6 +293,34 @@ app.put('/api/admin/usuario/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Sumar créditos por email (admin) - DEBE IR ANTES de /api/admin/creditos/:id
+app.post('/api/admin/creditos/email', requireAdmin, async (req, res) => {
+  try {
+    if (!sb2) return res.status(500).json({ ok: false, error: 'Supabase #2 no configurado' });
+    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+    const cantidad = parseInt(req.body.cantidad) || 0;
+    if (!email || cantidad < 1) return res.status(400).json({ ok: false, error: 'Email y cantidad requeridos' });
+    
+    const { data: usr, error: findError } = await sb2
+      .from('usuarios')
+      .select('id, creditos')
+      .eq('email', email)
+      .single();
+    
+    if (findError || !usr) return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    const nuevo = (usr.creditos || 0) + cantidad;
+    const { error } = await sb2
+      .from('usuarios')
+      .update({ creditos: nuevo })
+      .eq('id', usr.id);
+    if (error) throw error;
+    res.json({ ok: true, creditos: nuevo, email });
+  } catch (e) {
+    console.error('Error sumando creditos por email:', e);
+    res.status(500).json({ ok: false, error: e.message || e.toString() || 'Error del servidor' });
+  }
+});
+
 app.post('/api/admin/creditos/:id', requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
@@ -319,31 +347,52 @@ app.post('/api/admin/creditos/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// Sumar créditos por email (admin) - DEBE IR ANTES de /api/admin/creditos/:id
-app.post('/api/admin/creditos/email', requireAdmin, async (req, res) => {
+// DELETE usuario (admin) - elimina usuario, sus sesiones y sus ECIDs
+app.delete('/api/admin/usuario/:id', requireAdmin, async (req, res) => {
   try {
-    if (!sb2) return res.status(500).json({ ok: false, error: 'Supabase #2 no configurado' });
-    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
-    const cantidad = parseInt(req.body.cantidad) || 0;
-    if (!email || cantidad < 1) return res.status(400).json({ ok: false, error: 'Email y cantidad requeridos' });
-    
-    const { data: usr, error: findError } = await sb2
-      .from('usuarios')
-      .select('id, creditos')
-      .eq('email', email)
-      .single();
-    
-    if (findError || !usr) return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
-    const nuevo = (usr.creditos || 0) + cantidad;
-    const { error } = await sb2
-      .from('usuarios')
-      .update({ creditos: nuevo })
-      .eq('id', usr.id);
+    const id = req.params.id;
+    await sb1.from('ecids').delete().eq('usuario_id', id);
+    await sb2.from('sesiones').delete().eq('usuario_id', id);
+    const { error } = await sb2.from('usuarios').delete().eq('id', id);
     if (error) throw error;
-    res.json({ ok: true, creditos: nuevo, email });
+    res.json({ ok: true });
   } catch (e) {
-    console.error('Error sumando creditos por email:', e);
-    res.status(500).json({ ok: false, error: e.message || e.toString() || 'Error del servidor' });
+    console.error('Error eliminando usuario:', e.message);
+    res.status(500).json({ ok: false, error: 'Error del servidor' });
+  }
+});
+
+// DELETE ECID (admin) - elimina registro ECID en base 1
+app.delete('/api/admin/ecid/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { error } = await sb1.from('ecids').delete().eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error eliminando ECID:', e.message);
+    res.status(500).json({ ok: false, error: 'Error de base de datos' });
+  }
+});
+
+// Admin ECID registration (no credit cost)
+app.post('/api/admin/ecid', requireAdmin, async (req, res) => {
+  try {
+    const ecid = String((req.body && req.body.ecid) || '').trim();
+    if (!/^0x[0-9a-fA-F]{1,40}$/.test(ecid)) {
+      return res.status(400).json({ ok: false, error: 'ECID invalido' });
+    }
+
+    const { error: errUp } = await sb1.from('ecids').upsert(
+      { usuario_id: req.admin.id, ecid, ultima_vez: new Date().toISOString() },
+      { onConflict: 'usuario_id,ecid', ignoreDuplicates: false }
+    );
+    if (errUp) throw errUp;
+
+    res.json({ ok: true, ecid });
+  } catch (e) {
+    console.error('Error guardando ECID admin:', e.message);
+    res.status(500).json({ ok: false, error: 'Error de base de datos' });
   }
 });
 
