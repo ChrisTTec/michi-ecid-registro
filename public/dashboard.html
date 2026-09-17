@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard · Michi ECID Registro</title>
+<link rel="icon" href="/icono.ico">
+<style>
+  :root { --bg:#101014; --card:#1a1a22; --line:#26262e; --ok:#00c828; --warn:#c81e1e; --accent:#3478f6; --txt:#e8e9f0; --dim:#8b8d98; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:radial-gradient(1200px 600px at 70% -10%, #1c1c28 0%, var(--bg) 60%); color:var(--txt); font-family:"Segoe UI",system-ui,sans-serif; min-height:100vh; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 28px; border-bottom:1px solid var(--line); background:rgba(16,16,20,.85); backdrop-filter:blur(6px); position:sticky; top:0; flex-wrap:wrap; }
+  header .left { display:flex; align-items:center; gap:14px; }
+  header img { width:38px; height:38px; border-radius:8px; border:1px solid var(--line); }
+  header .t { font-size:17px; font-weight:600; letter-spacing:.3px; }
+  header .s { font-size:12.5px; color:var(--dim); }
+  header .user-info { display:flex; align-items:center; gap:16px; font-size:13.5px; color:var(--txt); }
+  header .creditos { background:var(--accent); color:#fff; padding:4px 12px; border-radius:20px; font-weight:600; font-size:13px; }
+  header .btn-logout { background:var(--card); border:1px solid var(--line); color:var(--txt); padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; transition:.15s; }
+  header .btn-logout:hover { border-color:var(--warn); color:var(--warn); }
+  main { max-width:960px; margin:0 auto; padding:28px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px; }
+  .tarjeta { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 20px; }
+  .tarjeta .label { font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.6px; }
+  .tarjeta .valor { font-size:28px; font-weight:700; margin-top:6px; color:var(--accent); }
+  .tarjeta .valor small { font-size:14px; color:var(--dim); font-weight:500; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .panel .head { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid var(--line); font-size:13px; color:var(--dim); text-transform:uppercase; letter-spacing:.6px; }
+  .panel .head .refresh { background:var(--accent); color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:left; padding:12px 20px; font-size:13.5px; }
+  th { color:var(--dim); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--line); }
+  td { border-top:1px solid var(--line); }
+  td code { background:#0d0f14; border:1px solid var(--line); padding:3px 8px; border-radius:6px; font-size:13px; color:var(--accent); }
+  .badge { padding:3px 9px; border-radius:20px; font-size:12px; font-weight:600; }
+  .b-ok { background:rgba(0,200,40,.12); color:var(--ok); border:1px solid rgba(0,200,40,.3); }
+  .b-rojo { background:rgba(200,30,30,.12); color:var(--warn); border:1px solid rgba(200,30,30,.3); }
+  .hora { color:var(--dim); font-size:12.5px; }
+  .vacio { padding:60px 20px; text-align:center; color:var(--dim); }
+  .vacio .g { font-size:36px; margin-bottom:8px; }
+  @media (max-width:640px) { header { flex-direction:column; align-items:flex-start; } header .user-info { flex-wrap:wrap; gap:8px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="left">
+    <img src="/icono.ico" alt="Michi Ramdisk">
+    <div>
+      <div class="t">Michi ECID Registro</div>
+      <div class="s">Dashboard de ECIDs registrados</div>
+    </div>
+  </div>
+  <div class="user-info">
+    <span id="userEmail">cargando…</span>
+    <span class="creditos" id="creditos">—</span>
+    <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+  </div>
+</header>
+<main>
+  <section class="grid">
+    <div class="tarjeta"><div class="label">ECIDs únicos</div><div class="valor" id="total">–</div></div>
+    <div class="tarjeta"><div class="label">Registros totales</div><div class="valor" id="veces">–</div></div>
+    <div class="tarjeta"><div class="label">Última llegada</div><div class="valor" id="ultimo" style="font-size:15px;font-weight:600">–</div></div>
+  </section>
+  <section class="panel">
+    <div class="head"><span>ECIDs registrados</span><button class="refresh" onclick="cargar()">Actualizar</button></div>
+    <table>
+      <thead><tr><th>ECID</th><th>Primera vez</th><th>Última vez</th><th>Veces</th></tr></thead>
+      <tbody id="filas"></tbody>
+    </table>
+    <div id="vacio" class="vacio" hidden><div class="g">📡</div>Aún no tienes ECIDs registrados. Usa la app Michi Ramdisk para enviar uno.</div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = iso => iso ? new Date(iso).toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+
+async function cargar() {
+  try {
+    const r = await fetch('/api/ecids', { credentials: 'include' });
+    if (r.status === 401) { window.location.href = '/login.html'; return; }
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    const tbody = $('filas');
+    tbody.innerHTML = '';
+    let veces = 0;
+    d.ecids.forEach(e => {
+      veces += (e.veces || 1);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><code>${e.ecid}</code></td>
+        <td class="hora">${fmt(e.registrado)}</td>
+        <td class="hora">${fmt(e.ultima_vez)}</td>
+        <td><span class="badge ${(e.veces||1) > 1 ? 'b-ok' : 'b-rojo'}">${(e.veces||1) > 1 ? 'visto '+e.veces+'×' : '1ª vez'}</span></td>`;
+      tbody.appendChild(tr);
+    });
+    $('total').textContent = d.total || 0;
+    $('veces').textContent = veces || 0;
+    $('ultimo').textContent = d.ecids.length ? fmt(d.ecids[0].ultima_vez) : '—';
+    $('creditos').textContent = d.creditos + ' créditos';
+    $('userEmail').textContent = d.email;
+    $('vacio').hidden = (d.total || 0) > 0;
+  } catch (e) {
+    if (e.message.includes('401')) window.location.href = '/login.html';
+  }
+}
+
+async function logout() {
+  await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/login.html';
+}
+
+cargar();
+setInterval(cargar, 15000);
+</script>
+</body>
+</html>

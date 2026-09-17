@@ -1,0 +1,16 @@
+# Michi ECID Registro - config para desplegar en Render
+# Sube esta carpeta a un repo de GitHub y luego en Render:
+# New > Web Service > conecta el repo > Build: npm install  Start: node server.js
+# Y crea una base de datos PostgreSQL gratuita (New > PostgreSQL) y pega su
+# "Internal Database URL" como variable de entorno DATABASE_URL.
+
+services:
+  - type: web
+    name: michi-ecid-registro
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        value: "postgres://USUARIO:CAMBIAR@localhost:5432/michi_ecid"  # reemplaza con tu URL interna de Render

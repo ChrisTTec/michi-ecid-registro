@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login · Michi ECID Registro</title>
+<link rel="icon" href="/icono.ico">
+<style>
+  :root { --bg:#101014; --card:#1a1a22; --line:#26262e; --ok:#00c828; --accent:#3478f6; --txt:#e8e9f0; --dim:#8b8d98; --err:#ff4444; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:radial-gradient(1200px 600px at 70% -10%, #1c1c28 0%, var(--bg) 60%); color:var(--txt); font-family:"Segoe UI",system-ui,sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:40px; width:100%; max-width:400px; }
+  header { text-align:center; margin-bottom:32px; }
+  header img { width:48px; height:48px; border-radius:10px; border:1px solid var(--line); margin-bottom:16px; }
+  header h1 { font-size:22px; font-weight:700; }
+  header p { color:var(--dim); font-size:13.5px; margin-top:6px; }
+  .form-group { margin-bottom:20px; }
+  label { display:block; font-size:13px; color:var(--dim); margin-bottom:6px; }
+  input { width:100%; background:#0d0f14; border:1px solid var(--line); border-radius:8px; padding:14px 16px; color:var(--txt); font-size:15px; outline:none; transition:border-color .15s; }
+  input:focus { border-color:var(--accent); }
+  .error { color:var(--err); font-size:12.5px; margin-top:6px; min-height:18px; }
+  button[type=submit] { width:100%; margin-top:8px; background:var(--accent); color:#fff; border:none; border-radius:10px; padding:14px; font-size:15px; font-weight:600; cursor:pointer; transition:.15s; }
+  button[type=submit]:hover { filter:brightness(1.1); }
+  button[type=submit]:disabled { opacity:.6; cursor:not-allowed; }
+  .footer { text-align:center; margin-top:24px; font-size:13.5px; color:var(--dim); }
+  .footer a { color:var(--accent); text-decoration:none; }
+  .footer a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="card">
+  <header>
+    <img src="/icono.ico" alt="Michi Ramdisk">
+    <h1>Iniciar sesión</h1>
+    <p>Ingresa tu email y contraseña</p>
+  </header>
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" autocomplete="email" required placeholder="tucorreo@ejemplo.com">
+    </div>
+    <div class="form-group">
+      <label for="pass">Contraseña</label>
+      <input type="password" id="pass" name="pass" autocomplete="current-password" required placeholder="••••••••">
+    </div>
+    <div class="error" id="err"></div>
+    <button type="submit" id="btnLogin">Entrar</button>
+  </form>
+  <div class="footer">
+    ¿No tienes cuenta? <a href="/registro.html">Regístrate</a>
+  </div>
+</div>
+<script>
+const form = document.getElementById('loginForm');
+const errEl = document.getElementById('err');
+const btn = document.getElementById('btnLogin');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+
+  const fd = new FormData(form);
+  const body = Object.fromEntries(fd);
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
+    window.location.href = '/dashboard.html';
+  } catch (e) {
+    errEl.textContent = e.message;
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
+  }
+});
+</script>
+</body>
+</html>
