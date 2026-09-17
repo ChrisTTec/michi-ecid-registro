@@ -496,7 +496,7 @@ async function usuarioPorCookie(req) {
     .select('id, email, creditos')
     .eq('id', ses.usuario_id)
     .single();
-  return usr ? { id: usr.id, email: u.email, creditos: u.creditos } : null;
+  return usr ? { id: usr.id, email: usr.email, creditos: usr.creditos } : null;
 }
 
 function setCookieHeader(res, token) {
