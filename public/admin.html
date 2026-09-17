@@ -107,6 +107,7 @@
       <div style="display:flex;gap:8px;align-items:center;">
         <input type="search" id="searchUsers" class="search" placeholder="Buscar email...">
         <button class="btn" onclick="abrirModalCrear()">+ Nuevo</button>
+        <button class="btn" onclick="abrirModalCreditosEmail()" style="background:var(--ok);">+ Créditos por Email</button>
       </div>
     </div>
     <table>
@@ -154,25 +155,46 @@
   </div>
 </div>
 
-<!-- Modal sumar créditos -->
-<div class="modal" id="modalCreditos">
-  <div class="modal-box">
-    <h3>Sumar créditos a <span id="credUserEmail"></span></h3>
-    <form id="formCreditos">
-      <input type="hidden" id="credUserId">
-      <div class="form-group">
-        <label>Cantidad a sumar</label>
-        <input type="number" id="inputSumar" class="creditos-input" min="1" value="10" required>
-      </div>
-      <div class="btns">
-        <button type="button" class="btn btn-cancel" onclick="cerrarModalCreditos()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Sumar</button>
-      </div>
-    </form>
+<!-- Modal sumar créditos (por ID de usuario) -->
+  <div class="modal" id="modalCreditos">
+    <div class="modal-box">
+      <h3>Sumar créditos a <span id="credUserEmail"></span></h3>
+      <form id="formCreditos">
+        <input type="hidden" id="credUserId">
+        <div class="form-group">
+          <label>Cantidad a sumar</label>
+          <input type="number" id="inputSumar" class="creditos-input" min="1" value="10" required>
+        </div>
+        <div class="btns">
+          <button type="button" class="btn btn-cancel" onclick="cerrarModalCreditos()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Sumar</button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<!-- Modal confirmar eliminación -->
+  <!-- Modal sumar créditos por Email -->
+  <div class="modal" id="modalCreditosEmail">
+    <div class="modal-box">
+      <h3>Sumar créditos por Email</h3>
+      <form id="formCreditosEmail">
+        <div class="form-group">
+          <label>Email del usuario</label>
+          <input type="email" id="inputEmailCreditos" required placeholder="usuario@ejemplo.com">
+        </div>
+        <div class="form-group">
+          <label>Cantidad de créditos a agregar</label>
+          <input type="number" id="inputSumarEmail" class="creditos-input" min="1" value="10" required>
+        </div>
+        <div class="btns">
+          <button type="button" class="btn btn-cancel" onclick="cerrarModalCreditosEmail()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Sumar créditos</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal confirmar eliminación -->
 <div class="modal" id="modalConfirm">
   <div class="modal-box">
     <h3 id="confirmTitulo">Confirmar eliminación</h3>
