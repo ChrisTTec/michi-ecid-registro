@@ -149,6 +149,7 @@ app.post('/api/logout', (_req, res) => {
 
 // -----------------------------------------------------------
 // ECIDs -> se guardan en Supabase #1 (con usuario_id de la #2)
+// Cada registro cuesta 3 créditos
 // -----------------------------------------------------------
 app.post('/api/ecid', async (req, res) => {
   try {
@@ -158,7 +159,9 @@ app.post('/api/ecid', async (req, res) => {
     if (!/^0x[0-9a-fA-F]{1,40}$/.test(ecid)) {
       return res.status(400).json({ ok: false, error: 'ECID invalido' });
     }
-    if (u.creditos < 1) return res.status(402).json({ ok: false, error: 'Sin creditos' });
+    if ((u.creditos || 0) < 3) {
+      return res.status(402).json({ ok: false, error: 'Créditos insuficientes (mín 3)' });
+    }
 
     const { error: errUp } = await sb1.from('ecids').upsert(
       { usuario_id: u.id, ecid, ultima_vez: new Date().toISOString() },
@@ -168,7 +171,7 @@ app.post('/api/ecid', async (req, res) => {
 
     const { data: upd } = await sb2
       .from('usuarios')
-      .update({ creditos: u.creditos - 1 })
+      .update({ creditos: u.creditos - 3 })
       .eq('id', u.id)
       .select('creditos')
       .single();
@@ -313,194 +316,6 @@ app.post('/api/admin/creditos/:id', requireAdmin, async (req, res) => {
   } catch (e) {
     console.error('Error sumando creditos:', e.message);
     res.status(500).json({ ok: false, error: 'Error del servidor' });
-  }
-});
-
-// -----------------------------------------------------------
-function setCookieHeader(res, token) {
-  res.setHeader('Set-Cookie',
-    `sesion=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax; Secure`);
-}
-
-async function usuarioPorCookie(req) {
-  const token = req.cookies?.sesion;
-  if (!token || !sb2) return null;
-  const { data: ses } = await sb2
-    .from('sesiones')
-    .select('usuario_id')
-    .eq('token', token)
-    .gt('expira', new Date().toISOString())
-    .single();
-  if (!ses) return null;
-  const { data: usr } = await sb2
-    .from('usuarios')
-    .select('id, email, creditos')
-    .eq('id', ses.usuario_id)
-    .single();
-  return usr ? { id: usr.id, email: usr.email, creditos: usr.creditos } : null;
-}
-
-function setCookieHeader(res, token) {
-  res.setHeader('Set-Cookie',
-    `sesion=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax; Secure`);
-}
-
-async function nuevaSesion(sb, usuario_id) {
-  const token = crypto.randomBytes(32).toString('hex');
-  await sb.from('sesiones').insert({
-    token,
-    usuario_id,
-    expira: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-  });
-  return token;
-}
-
-// -----------------------------------------------------------
-// Auth (todo en Supabase #2)
-// -----------------------------------------------------------
-app.get('/api/sesion', async (req, res) => {
-  const u = await usuarioPorCookie(req);
-  res.json(u ? { ok: true, email: u.email, creditos: u.creditos } : { ok: false });
-});
-
-app.post('/api/registro', async (req, res) => {
-  try {
-    if (!sb2) return res.status(500).json({ ok: false, error: 'Supabase #2 no configurado' });
-    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
-    const pass = String((req.body && req.body.pass) || '');
-    if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, error: 'Email invalido' });
-    if (pass.length < 8) return res.status(400).json({ ok: false, error: 'Minimo 8 caracteres' });
-
-    const hash = await bcrypt.hash(pass, 10);
-    const { data: usr, error } = await sb2
-      .from('usuarios')
-      .insert({ email, pass_hash: hash })
-      .select('id, email, creditos')
-      .single();
-    if (error) {
-      if (error.code === '23505') return res.status(409).json({ ok: false, error: 'Ese email ya existe' });
-      throw error;
-    }
-    const token = crypto.randomBytes(32).toString('hex');
-    await sb2.from('sesiones').insert({
-      token,
-      usuario_id: usr.id,
-      expira: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    });
-    setCookieHeader(res, token);
-    res.json({ ok: true, email: usr.email, creditos: usr.creditos });
-  } catch (e) {
-    console.error('Error registro:', e.message);
-    res.status(500).json({ ok: false, error: 'Error del servidor' });
-  }
-});
-
-app.post('/api/login', async (req, res) => {
-  try {
-    if (!sb2) return res.status(500).json({ ok: false, error: 'Supabase #2 no configurado' });
-    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
-    const pass = String((req.body && req.body.pass) || '');
-    const { data: usr } = await sb2
-      .from('usuarios')
-      .select('id, email, pass_hash, creditos')
-      .eq('email', email)
-      .single();
-    if (!usr || !(await bcrypt.compare(pass, usr.pass_hash))) {
-      return res.status(401).json({ ok: false, error: 'Email o contrasena incorrectos' });
-    }
-    const token = crypto.randomBytes(32).toString('hex');
-    await sb2.from('sesiones').insert({
-      token,
-      usuario_id: usr.id,
-      expira: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    });
-    setCookieHeader(res, token);
-    res.json({ ok: true, email: usr.email, creditos: usr.creditos });
-  } catch (e) {
-    console.error('Error login:', e.message);
-    res.status(500).json({ ok: false, error: 'Error del servidor' });
-  }
-});
-
-app.post('/api/logout', (_req, res) => {
-  res.setHeader('Set-Cookie', 'sesion=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
-  res.json({ ok: true });
-});
-
-// -----------------------------------------------------------
-// ECIDs -> se guardan en Supabase #1 (con usuario_id de la #2)
-// -----------------------------------------------------------
-app.post('/api/ecid', async (req, res) => {
-  try {
-    const u = await usuarioPorCookie(req);
-    if (!u) return res.status(401).json({ ok: false, error: 'No hay sesion' });
-    const ecid = String((req.body && req.body.ecid) || '').trim();
-    if (!/^0x[0-9a-fA-F]{1,40}$/.test(ecid)) {
-      return res.status(400).json({ ok: false, error: 'ECID invalido' });
-    }
-    if (u.creditos < 1) return res.status(402).json({ ok: false, error: 'Sin creditos' });
-
-    const { error: errUp } = await sb1.from('ecids').upsert(
-      { usuario_id: u.id, ecid, ultima_vez: new Date().toISOString() },
-      { onConflict: 'usuario_id,ecid', ignoreDuplicates: false }
-    );
-    if (errUp) throw errUp;
-
-    const { data: upd } = await sb2
-      .from('usuarios')
-      .update({ creditos: u.creditos - 1 })
-      .eq('id', u.id)
-      .select('creditos')
-      .single();
-    res.json({ ok: true, ecid, creditos: upd.creditos });
-  } catch (e) {
-    console.error('Error guardando ECID:', e.message);
-    res.status(500).json({ ok: false, error: 'Error de base de datos' });
-  }
-});
-
-app.get('/api/ecids', async (req, res) => {
-  try {
-    const u = await usuarioPorCookie(req);
-    if (!u) return res.status(401).json({ ok: false, error: 'No hay sesion' });
-    const { data: rows } = await sb1
-      .from('ecids')
-      .select('ecid, creado, ultima_vez, veces')
-      .eq('usuario_id', u.id)
-      .order('ultima_vez', { ascending: false });
-    const veces = rows.reduce((a, e) => a + (e.veces || 1), 0);
-    res.json({ ok: true, email: u.email, creditos: u.creditos, total: rows.length, veces, ecids: rows });
-  } catch (e) {
-    console.error('Error leyendo ECIDs:', e.message);
-    res.status(500).json({ ok: false, error: 'Error de base de datos' });
-}
-});
-
-// DELETE usuario (admin) - elimina usuario, sus sesiones y sus ECIDs
-app.delete('/api/admin/usuario/:id', requireAdmin, async (req, res) => {
-  try {
-    const id = req.params.id;
-    await sb1.from('ecids').delete().eq('usuario_id', id);
-    await sb2.from('sesiones').delete().eq('usuario_id', id);
-    const { error } = await sb2.from('usuarios').delete().eq('id', id);
-    if (error) throw error;
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('Error eliminando usuario:', e.message);
-    res.status(500).json({ ok: false, error: 'Error del servidor' });
-  }
-});
-
-// DELETE ECID (admin) - elimina registro ECID en base 1
-app.delete('/api/admin/ecid/:id', requireAdmin, async (req, res) => {
-  try {
-    const id = req.params.id;
-    const { error } = await sb1.from('ecids').delete().eq('id', id);
-    if (error) throw error;
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('Error eliminando ECID:', e.message);
-    res.status(500).json({ ok: false, error: 'Error de base de datos' });
   }
 });
 

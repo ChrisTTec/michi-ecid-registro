@@ -63,12 +63,21 @@
     <div class="tarjeta"><div class="label">Última llegada</div><div class="valor" id="ultimo" style="font-size:15px;font-weight:600">–</div></div>
   </section>
   <section class="panel">
+    <div class="head"><span>Registrar ECID manual</span></div>
+    <form id="formManual" style="padding:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:280px;">
+        <label style="display:block;font-size:13px;color:var(--dim);margin-bottom:6px;">ECID (formato 0x...)</label>
+        <input type="text" id="inputEcid" placeholder="0x1A2F3B4C..." style="width:100%;background:#0d0f14;border:1px solid var(--line);border-radius:8px;padding:12px 14px;color:var(--txt);font-size:14px;font-family:monospace;">
+      </div>
+      <button type="submit" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;">Registrar ECID</button>
+    </form>
+    <div id="msgManual" style="padding:0 20px 12px;min-height:20px;font-size:13px;"></div>
     <div class="head"><span>ECIDs registrados</span><button class="refresh" onclick="cargar()">Actualizar</button></div>
     <table>
       <thead><tr><th>ECID</th><th>Primera vez</th><th>Última vez</th><th>Veces</th></tr></thead>
       <tbody id="filas"></tbody>
     </table>
-    <div id="vacio" class="vacio" hidden><div class="g">📡</div>Aún no tienes ECIDs registrados. Usa la app Michi Ramdisk para enviar uno.</div>
+    <div id="vacio" class="vacio" hidden><div class="g">📡</div>Aún no tienes ECIDs registrados. Usa la app Michi Ramdisk o el formulario de arriba.</div>
   </section>
 </main>
 <script>
@@ -112,6 +121,32 @@ async function logout() {
 
 cargar();
 setInterval(cargar, 15000);
+
+// Formulario manual de ECID
+$('formManual').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const ecid = $('inputEcid').value.trim();
+  if (!/^0x[0-9a-fA-F]{1,40}$/.test(ecid)) {
+    $('msgManual').innerHTML = '<span style="color:var(--warn)">ECID inválido (formato 0x...)</span>';
+    return;
+  }
+  $('msgManual').textContent = 'Registrando...';
+  try {
+    const r = await fetch('/api/ecid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ ecid })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error');
+    $('msgManual').innerHTML = '<span style="color:var(--ok)">✓ ECID registrado (' + data.creditos + ' créditos)</span>';
+    $('inputEcid').value = '';
+    cargar();
+  } catch (e) {
+    $('msgManual').innerHTML = '<span style="color:var(--warn)">' + e.message + '</span>';
+  }
+});
 </script>
 </body>
 </html>
