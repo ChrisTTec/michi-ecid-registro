@@ -319,18 +319,21 @@ app.post('/api/admin/creditos/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// Sumar créditos por email (admin)
+// Sumar créditos por email (admin) - DEBE IR ANTES de /api/admin/creditos/:id
 app.post('/api/admin/creditos/email', requireAdmin, async (req, res) => {
   try {
+    if (!sb2) return res.status(500).json({ ok: false, error: 'Supabase #2 no configurado' });
     const email = String((req.body && req.body.email) || '').trim().toLowerCase();
     const cantidad = parseInt(req.body.cantidad) || 0;
     if (!email || cantidad < 1) return res.status(400).json({ ok: false, error: 'Email y cantidad requeridos' });
-    const { data: usr } = await sb2
+    
+    const { data: usr, error: findError } = await sb2
       .from('usuarios')
       .select('id, creditos')
       .eq('email', email)
       .single();
-    if (!usr) return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    
+    if (findError || !usr) return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
     const nuevo = (usr.creditos || 0) + cantidad;
     const { error } = await sb2
       .from('usuarios')
@@ -339,8 +342,8 @@ app.post('/api/admin/creditos/email', requireAdmin, async (req, res) => {
     if (error) throw error;
     res.json({ ok: true, creditos: nuevo, email });
   } catch (e) {
-    console.error('Error sumando creditos por email:', e.message);
-    res.status(500).json({ ok: false, error: e.message });
+    console.error('Error sumando creditos por email:', e);
+    res.status(500).json({ ok: false, error: e.message || e.toString() || 'Error del servidor' });
   }
 });
 
