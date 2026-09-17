@@ -18,15 +18,16 @@
   header .badge-admin { background:var(--warn); color:#fff; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; }
   header .btn-logout { background:var(--card); border:1px solid var(--line); color:var(--txt); padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; transition:.15s; }
   header .btn-logout:hover { border-color:var(--warn); color:var(--warn); }
-  main { max-width:1100px; margin:0 auto; padding:28px; }
+  main { max-width:1200px; margin:0 auto; padding:28px; }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:24px; }
   .tarjeta { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 20px; }
   .tarjeta .label { font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.6px; }
   .tarjeta .valor { font-size:28px; font-weight:700; margin-top:6px; color:var(--accent); }
   .tarjeta .valor small { font-size:14px; color:var(--dim); font-weight:500; }
   .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:20px; }
-  .panel .head { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid var(--line); font-size:13px; color:var(--dim); text-transform:uppercase; letter-spacing:.6px; }
+  .panel .head { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid var(--line); font-size:13px; color:var(--dim); text-transform:uppercase; letter-spacing:.6px; flex-wrap:wrap; gap:12px; }
   .panel .head .btn { background:var(--accent); color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer; }
+  .panel .head .search { padding:8px 12px; border:1px solid var(--line); border-radius:6px; background:#0d0f14; color:var(--txt); font-size:13px; width:250px; }
   table { width:100%; border-collapse:collapse; }
   th,td { text-align:left; padding:12px 20px; font-size:13.5px; }
   th { color:var(--dim); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--line); }
@@ -49,8 +50,20 @@
   .modal-box .btn { flex:1; padding:12px; border-radius:8px; font-weight:600; border:none; cursor:pointer; }
   .modal-box .btn-cancel { background:var(--card); color:var(--txt); border:1px solid var(--line); }
   .modal-box .btn-primary { background:var(--accent); color:#fff; }
+  .modal-box .btn-danger { background:var(--warn); color:#fff; }
   .creditos-input { width:100px; }
-  @media (max-width:640px) { header { flex-direction:column; align-items:flex-start; } }
+  .btn-icon { background:none; border:none; color:var(--dim); cursor:pointer; padding:4px 8px; font-size:14px; }
+  .btn-icon:hover { color:var(--warn); }
+  .btn-danger { background:var(--warn); color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; }
+  .btn-danger:hover { filter:brightness(1.1); }
+  .form-inline { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; padding:20px; }
+  .form-inline > div { flex:1; min-width:240px; }
+  .form-inline label { display:block; font-size:13px; color:var(--dim); margin-bottom:6px; }
+  .form-inline input { width:100%; background:#0d0f14; border:1px solid var(--line); border-radius:8px; padding:12px 14px; color:var(--txt); font-size:14px; font-family:monospace; }
+  .form-inline button { padding:12px 24px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:none; }
+  .msg { padding:0 20px 12px; min-height:20px; font-size:13px; }
+  .creditos-input { width:100px; }
+  @media (max-width:640px) { header { flex-direction:column; align-items:flex-start; } .search { width:100%; } }
 </style>
 </head>
 <body>
@@ -74,18 +87,42 @@
     <div class="tarjeta"><div class="label">ECIDs totales</div><div class="valor" id="totalEcids">–</div></div>
   </section>
 
+  <!-- Panel: Registrar ECID (admin también puede) -->
   <section class="panel">
-    <div class="head"><span>Usuarios</span><button class="btn" onclick="abrirModalCrear()">+ Nuevo usuario</button></div>
+    <div class="head"><span>Registrar ECID (admin)</span></div>
+    <form id="formManual" class="form-inline">
+      <div>
+        <label>ECID (formato 0x...)</label>
+        <input type="text" id="inputEcid" placeholder="0x1A2F3B4C..." required>
+      </div>
+      <button type="submit">Registrar ECID</button>
+    </form>
+    <div id="msgManual" class="msg"></div>
+  </section>
+
+  <!-- Panel: Usuarios con búsqueda y acciones -->
+  <section class="panel">
+    <div class="head">
+      <span>Usuarios</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="search" id="searchUsers" class="search" placeholder="Buscar email...">
+        <button class="btn" onclick="abrirModalCrear()">+ Nuevo</button>
+      </div>
+    </div>
     <table>
       <thead><tr><th>Email</th><th>Créditos</th><th>Registrado</th><th>Acciones</th></tr></thead>
       <tbody id="tbodyUsuarios"></tbody>
     </table>
   </section>
 
+  <!-- Panel: ECIDs globales con búsqueda -->
   <section class="panel">
-    <div class="head"><span>ECIDs globales</span></div>
+    <div class="head">
+      <span>ECIDs globales</span>
+      <input type="search" id="searchEcids" class="search" placeholder="Buscar ECID o email...">
+    </div>
     <table>
-      <thead><tr><th>ECID</th><th>Usuario</th><th>Primera vez</th><th>Última vez</th><th>Veces</th></tr></thead>
+      <thead><tr><th>ECID</th><th>Usuario</th><th>Primera vez</th><th>Última vez</th><th>Veces</th><th>Acción</th></tr></thead>
       <tbody id="tbodyEcids"></tbody>
     </table>
   </section>
@@ -133,7 +170,19 @@
       </div>
     </form>
   </div>
-</main>
+</div>
+
+<!-- Modal confirmar eliminación -->
+<div class="modal" id="modalConfirm">
+  <div class="modal-box">
+    <h3 id="confirmTitulo">Confirmar eliminación</h3>
+    <p id="confirmTexto" style="color:var(--dim);margin-bottom:20px;"></p>
+    <div class="btns">
+      <button type="button" class="btn btn-cancel" onclick="cerrarModalConfirm()">Cancelar</button>
+      <button type="button" class="btn btn-danger" id="btnConfirmar">Eliminar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -156,8 +205,6 @@ async function cargarAdmin() {
       api('/api/admin/ecids')
     ]);
     if (!ses.ok || !ses.creditos) { window.location.href = '/login.html'; return; }
-    // Verificar admin (podrías usar un claim o email fijo)
-    // Por ahora asumimos que si llega aquí es admin
     $('adminEmail').textContent = ses.email + ' ';
 
     $('totalUsuarios').textContent = stats.totalUsuarios;
@@ -171,39 +218,56 @@ async function cargarAdmin() {
   }
 }
 
+let allUsuarios = [];
+let allEcids = [];
+
 function renderUsuarios(list) {
+  allUsuarios = list;
+  const q = ($('searchUsers').value || '').toLowerCase();
+  const filtered = list.filter(u => u.email.toLowerCase().includes(q));
   const tbody = $('tbodyUsuarios');
   tbody.innerHTML = '';
-  list.forEach(u => {
+  filtered.forEach(u => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${u.email}</td>
       <td><span class="badge ${u.creditos > 0 ? 'b-ok' : 'b-warn'}">${u.creditos} créditos</span></td>
       <td class="hora">${new Date(u.creado).toLocaleString('es-ES')}</td>
       <td>
-        <button class="btn" style="padding:4px 10px;font-size:12px;" onclick="abrirModalCreditos('${u.id}', '${u.email}')">+ Créditos</button>
-        <button class="btn" style="padding:4px 10px;font-size:12px;margin-left:4px;background:var(--card);border:1px solid var(--line);" onclick="editarUsuario('${u.id}', '${u.email}', ${u.creditos})">Editar</button>
+        <button class="btn-icon" onclick="abrirModalCreditos('${u.id}', '${u.email}')" title="Sumar créditos">➕</button>
+        <button class="btn-icon" onclick="editarUsuario('${u.id}', '${u.email}', ${u.creditos})" title="Editar">✏️</button>
+        <button class="btn-danger" onclick="confirmarEliminarUsuario('${u.id}', '${u.email}')" title="Eliminar">🗑️</button>
       </td>`;
     tbody.appendChild(tr);
   });
 }
 
 function renderEcids(list) {
+  allEcids = list;
+  const q = ($('searchEcids').value || '').toLowerCase();
+  const filtered = list.filter(e => 
+    e.ecid.toLowerCase().includes(q) || (e.usuario_email||'').toLowerCase().includes(q)
+  );
   const tbody = $('tbodyEcids');
   tbody.innerHTML = '';
-  list.slice(0, 200).forEach(e => {
+  filtered.slice(0, 500).forEach(e => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><code>${e.ecid}</code></td>
       <td>${e.usuario_email || '—'}</td>
       <td class="hora">${new Date(e.creado).toLocaleString('es-ES')}</td>
       <td class="hora">${new Date(e.ultima_vez).toLocaleString('es-ES')}</td>
-      <td>${e.veces}</td>`;
+      <td>${e.veces}</td>
+      <td><button class="btn-danger" onclick="confirmarEliminarEcid('${e.id}', '${e.ecid}')" title="Eliminar ECID">🗑️</button></td>`;
     tbody.appendChild(tr);
   });
 }
 
-// --- Modales ---
+// --- Búsquedas en vivo ---
+$('searchUsers').addEventListener('input', () => renderUsuarios(allUsuarios));
+$('searchEcids').addEventListener('input', () => renderEcids(allEcids));
+
+// --- Modales usuario ---
 let editMode = false;
 function abrirModalCrear() {
   editMode = false;
@@ -234,6 +298,35 @@ function abrirModalCreditos(id, email) {
 }
 function cerrarModalCreditos() { $('modalCreditos').classList.remove('show'); }
 
+// --- Confirmar eliminación ---
+let pendingDelete = { type: '', id: '' };
+function confirmarEliminarUsuario(id, email) {
+  pendingDelete = { type: 'usuario', id };
+  $('confirmTitulo').textContent = 'Eliminar usuario';
+  $('confirmTexto').textContent = `¿Eliminar a ${email}? Se borrarán sus ECIDs y créditos.`;
+  $('modalConfirm').classList.add('show');
+}
+function confirmarEliminarEcid(id, ecid) {
+  pendingDelete = { type: 'ecid', id };
+  $('confirmTitulo').textContent = 'Eliminar ECID';
+  $('confirmTexto').textContent = `¿Eliminar el registro ${ecid}?`;
+  $('modalConfirm').classList.add('show');
+}
+function cerrarModalConfirm() { $('modalConfirm').classList.remove('show'); }
+
+$('#btnConfirmar').addEventListener('click', async () => {
+  try {
+    if (pendingDelete.type === 'usuario') {
+      await api('/api/admin/usuario/' + pendingDelete.id, { method: 'DELETE' });
+    } else {
+      await api('/api/admin/ecid/' + pendingDelete.id, { method: 'DELETE' });
+    }
+    cerrarModalConfirm();
+    cargarAdmin();
+  } catch (e) { alert(e.message); }
+});
+
+// --- Formularios ---
 $('formUsuario').addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = $('editUserId').value;
@@ -262,9 +355,53 @@ $('formCreditos').addEventListener('submit', async (e) => {
     cerrarModalCreditos();
     cargarAdmin();
   } catch (e) { alert(e.message); }
-}
+});
 
 function cerrarModalCreditos() { $('modalCreditos').classList.remove('show'); }
+
+// --- Registro ECID manual (admin) ---
+$('formManual').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const ecid = $('inputEcid').value.trim();
+  if (!/^0x[0-9a-fA-F]{1,40}$/.test(ecid)) {
+    $('msgManual').innerHTML = '<span style="color:var(--warn)">ECID inválido (formato 0x...)</span>';
+    return;
+  }
+  $('msgManual').textContent = 'Registrando...';
+  try {
+    const r = await fetch('/api/ecid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ ecid })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error');
+    $('msgManual').innerHTML = '<span style="color:var(--ok)">✓ ECID registrado</span>';
+    $('inputEcid').value = '';
+    cargarAdmin();
+  } catch (e) {
+    $('msgManual').innerHTML = '<span style="color:var(--warn)">' + e.message + '</span>';
+  }
+});
+
+// --- Auth ---
+async function logout() {
+  await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/login.html';
+}
+
+async function api(path, opts={}) {
+  const res = await fetch(path, { ...opts, credentials: 'include', headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) }});
+  if (res.status === 401 || res.status === 403) { window.location.href = '/login.html'; throw new Error('No autorizado'); }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Error');
+  return data;
+}
+
+function cerrarModal() { $('modalUsuario').classList.remove('show'); }
+function cerrarModalCreditos() { $('modalCreditos').classList.remove('show'); }
+function cerrarModalConfirm() { $('modalConfirm').classList.remove('show'); }
 
 async function logout() {
   await fetch('/api/logout', { method: 'POST', credentials: 'include' });

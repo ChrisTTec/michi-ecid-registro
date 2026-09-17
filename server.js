@@ -473,9 +473,38 @@ app.get('/api/ecids', async (req, res) => {
   } catch (e) {
     console.error('Error leyendo ECIDs:', e.message);
     res.status(500).json({ ok: false, error: 'Error de base de datos' });
+}
+});
+
+// DELETE usuario (admin) - elimina usuario, sus sesiones y sus ECIDs
+app.delete('/api/admin/usuario/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    await sb1.from('ecids').delete().eq('usuario_id', id);
+    await sb2.from('sesiones').delete().eq('usuario_id', id);
+    const { error } = await sb2.from('usuarios').delete().eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error eliminando usuario:', e.message);
+    res.status(500).json({ ok: false, error: 'Error del servidor' });
   }
 });
 
+// DELETE ECID (admin) - elimina registro ECID en base 1
+app.delete('/api/admin/ecid/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { error } = await sb1.from('ecids').delete().eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error eliminando ECID:', e.message);
+    res.status(500).json({ ok: false, error: 'Error de base de datos' });
+  }
+});
+
+// -----------------------------------------------------------
 function setCookieHeader(res, token) {
   res.setHeader('Set-Cookie',
     `sesion=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax; Secure`);
