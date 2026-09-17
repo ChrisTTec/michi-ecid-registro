@@ -188,6 +188,86 @@
 const $ = id => document.getElementById(id);
 const fmt = iso => iso ? new Date(iso).toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
 
+// Esperar a que el DOM esté listo antes de registrar listeners
+document.addEventListener('DOMContentLoaded', () => {
+  // Referencias a elementos
+  const btnConfirmar = $('#btnConfirmar');
+  if (btnConfirmar) btnConfirmar.addEventListener('click', async () => {
+    try {
+      if (pendingDelete.type === 'usuario') {
+        await api('/api/admin/usuario/' + pendingDelete.id, { method: 'DELETE' });
+      } else {
+        await api('/api/admin/ecid/' + pendingDelete.id, { method: 'DELETE' });
+      }
+      cerrarModalConfirm();
+      cargarAdmin();
+    } catch (e) { alert(e.message); }
+  });
+
+  $('formUsuario').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = $('editUserId').value;
+    const email = $('inputEmail').value.trim();
+    const pass = $('inputPass').value;
+    const creditos = parseInt($('inputCreditos').value) || 0;
+    try {
+      if (editMode) {
+        const body = { email, creditos };
+        if (pass) body.pass = pass;
+        await api('/api/admin/usuario/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      } else {
+        await api('/api/admin/usuario', { method: 'POST', body: JSON.stringify({ email: $('inputEmail').value, pass: $('inputPass').value, creditos }) });
+      }
+      cerrarModal();
+      cargarAdmin();
+    } catch (e) { alert(e.message); }
+  });
+
+  $('formCreditos').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = $('credUserId').value;
+    const cantidad = parseInt($('inputSumar').value) || 0;
+    try {
+      await api('/api/admin/creditos/' + id, { method: 'POST', body: JSON.stringify({ cantidad }) });
+      cerrarModalCreditos();
+      cargarAdmin();
+    } catch (e) { alert(e.message); }
+  });
+
+  $('formManual').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const ecid = $('inputEcid').value.trim();
+    if (!/^0x[0-9a-fA-F]{1,40}$/.test(ecid)) {
+      $('msgManual').innerHTML = '<span style="color:var(--warn)">ECID inválido (formato 0x...)</span>';
+      return;
+    }
+    $('msgManual').textContent = 'Registrando...';
+    try {
+      const r = await fetch('/api/ecid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ecid })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error');
+      $('msgManual').innerHTML = '<span style="color:var(--ok)">✓ ECID registrado</span>';
+      $('inputEcid').value = '';
+      cargarAdmin();
+    } catch (e) {
+      $('msgManual').innerHTML = '<span style="color:var(--warn)">' + e.message + '</span>';
+    }
+  });
+
+  // Búsquedas en vivo
+  $('searchUsers').addEventListener('input', () => renderUsuarios(allUsuarios));
+  $('searchEcids').addEventListener('input', () => renderEcids(allEcids));
+
+  // Carga inicial
+  cargarAdmin();
+  setInterval(cargarAdmin, 30000);
+});
+
 async function api(path, opts={}) {
   const res = await fetch(path, { ...opts, credentials: 'include', headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) }});
   if (res.status === 401 || res.status === 403) { window.location.href = '/login.html'; throw new Error('No autorizado'); }
@@ -312,80 +392,10 @@ function confirmarEliminarEcid(id, ecid) {
   $('confirmTexto').textContent = `¿Eliminar el registro ${ecid}?`;
   $('modalConfirm').classList.add('show');
 }
+function cerrarModal() { $('modalUsuario').classList.remove('show'); }
+function cerrarModalCreditos() { $('modalCreditos').classList.remove('show'); }
 function cerrarModalConfirm() { $('modalConfirm').classList.remove('show'); }
 
-$('#btnConfirmar').addEventListener('click', async () => {
-  try {
-    if (pendingDelete.type === 'usuario') {
-      await api('/api/admin/usuario/' + pendingDelete.id, { method: 'DELETE' });
-    } else {
-      await api('/api/admin/ecid/' + pendingDelete.id, { method: 'DELETE' });
-    }
-    cerrarModalConfirm();
-    cargarAdmin();
-  } catch (e) { alert(e.message); }
-});
-
-// --- Formularios ---
-$('formUsuario').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const id = $('editUserId').value;
-  const email = $('inputEmail').value.trim();
-  const pass = $('inputPass').value;
-  const creditos = parseInt($('inputCreditos').value) || 0;
-  try {
-    if (editMode) {
-      const body = { email, creditos };
-      if (pass) body.pass = pass;
-      await api('/api/admin/usuario/' + id, { method: 'PUT', body: JSON.stringify(body) });
-    } else {
-      await api('/api/admin/usuario', { method: 'POST', body: JSON.stringify({ email: $('inputEmail').value, pass: $('inputPass').value, creditos }) });
-    }
-    cerrarModal();
-    cargarAdmin();
-  } catch (e) { alert(e.message); }
-});
-
-$('formCreditos').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const id = $('credUserId').value;
-  const cantidad = parseInt($('inputSumar').value) || 0;
-  try {
-    await api('/api/admin/creditos/' + id, { method: 'POST', body: JSON.stringify({ cantidad }) });
-    cerrarModalCreditos();
-    cargarAdmin();
-  } catch (e) { alert(e.message); }
-});
-
-function cerrarModalCreditos() { $('modalCreditos').classList.remove('show'); }
-
-// --- Registro ECID manual (admin) ---
-$('formManual').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const ecid = $('inputEcid').value.trim();
-  if (!/^0x[0-9a-fA-F]{1,40}$/.test(ecid)) {
-    $('msgManual').innerHTML = '<span style="color:var(--warn)">ECID inválido (formato 0x...)</span>';
-    return;
-  }
-  $('msgManual').textContent = 'Registrando...';
-  try {
-    const r = await fetch('/api/ecid', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ ecid })
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || 'Error');
-    $('msgManual').innerHTML = '<span style="color:var(--ok)">✓ ECID registrado</span>';
-    $('inputEcid').value = '';
-    cargarAdmin();
-  } catch (e) {
-    $('msgManual').innerHTML = '<span style="color:var(--warn)">' + e.message + '</span>';
-  }
-});
-
-// --- Auth ---
 async function logout() {
   await fetch('/api/logout', { method: 'POST', credentials: 'include' });
   window.location.href = '/login.html';
@@ -398,18 +408,6 @@ async function api(path, opts={}) {
   if (!res.ok) throw new Error(data.error || 'Error');
   return data;
 }
-
-function cerrarModal() { $('modalUsuario').classList.remove('show'); }
-function cerrarModalCreditos() { $('modalCreditos').classList.remove('show'); }
-function cerrarModalConfirm() { $('modalConfirm').classList.remove('show'); }
-
-async function logout() {
-  await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-  window.location.href = '/login.html';
-}
-
-cargarAdmin();
-setInterval(cargarAdmin, 30000);
 </script>
 </body>
 </html>
