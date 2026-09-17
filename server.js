@@ -253,7 +253,7 @@ app.post('/api/admin/usuario', requireAdmin, async (req, res) => {
     const hash = await bcrypt.hash(pass, 10);
     const { data: usr, error } = await sb2
       .from('usuarios')
-      .insert({ email, pass_hash: await bcrypt.hash(pass, 10), creditos })
+      .insert({ email, pass_hash: hash, creditos })
       .select('id, email, creditos')
       .single();
     if (error) {
