@@ -231,7 +231,7 @@ app.get('/api/admin/ecids', requireAdmin, async (req, res) => {
   try {
     const { data } = await sb1
       .from('ecids')
-      .select('ecid, usuario_id, creado, ultima_vez, veces')
+      .select('id, ecid, usuario_id, creado, ultima_vez, veces')
       .order('ultima_vez', { ascending: false })
       .limit(500);
     // Enriquecer con email de usuario
