@@ -340,7 +340,7 @@ app.post('/api/admin/creditos/email', requireAdmin, async (req, res) => {
     res.json({ ok: true, creditos: nuevo, email });
   } catch (e) {
     console.error('Error sumando creditos por email:', e.message);
-    res.status(500).json({ ok: false, error: 'Error del servidor' });
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
