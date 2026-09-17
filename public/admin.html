@@ -284,7 +284,7 @@ async function cargarAdmin() {
       api('/api/admin/usuarios'),
       api('/api/admin/ecids')
     ]);
-    if (!ses.ok || !ses.creditos) { window.location.href = '/login.html'; return; }
+    if (!ses.ok || typeof ses.creditos !== 'number') { window.location.href = '/login.html'; return; }
     $('adminEmail').textContent = ses.email + ' ';
 
     $('totalUsuarios').textContent = stats.totalUsuarios;
