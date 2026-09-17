@@ -358,6 +358,27 @@ async function nuevaSesion(sb, usuario_id) {
   return token;
 }
 
+// Admin ECID registration (no credit cost)
+app.post('/api/admin/ecid', requireAdmin, async (req, res) => {
+  try {
+    const ecid = String((req.body && req.body.ecid) || '').trim();
+    if (!/^0x[0-9a-fA-F]{1,40}$/.test(ecid)) {
+      return res.status(400).json({ ok: false, error: 'ECID invalido' });
+    }
+
+    const { error: errUp } = await sb1.from('ecids').upsert(
+      { usuario_id: req.admin.id, ecid, ultima_vez: new Date().toISOString() },
+      { onConflict: 'usuario_id,ecid', ignoreDuplicates: false }
+    );
+    if (errUp) throw errUp;
+
+    res.json({ ok: true, ecid });
+  } catch (e) {
+    console.error('Error guardando ECID admin:', e.message);
+    res.status(500).json({ ok: false, error: 'Error de base de datos' });
+  }
+});
+
 app.get('/', (_req, res) => res.redirect('/index.html'));
 
 app.listen(PORT, () => console.log('Michi ECID Registro (2 Supabase) en puerto ' + PORT));
